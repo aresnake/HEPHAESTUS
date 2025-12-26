@@ -1,0 +1,129 @@
+import pytest
+
+
+ERROR_CODES = {
+    "INVALID_REQUEST",
+    "METHOD_NOT_FOUND",
+    "TOOL_NOT_FOUND",
+    "INVALID_ARGUMENT",
+    "EXECUTION_ERROR",
+    "INTERNAL_ERROR",
+}
+
+
+def validate_request(payload: dict) -> bool:
+    """Validate request envelope shape against MCP Contract v1."""
+    if not isinstance(payload, dict):
+        return False
+    required_keys = {"jsonrpc", "id", "method", "params"}
+    if payload.get("jsonrpc") != "2.0":
+        return False
+    if not required_keys.issubset(payload):
+        return False
+    if not isinstance(payload["id"], str):
+        return False
+    if not isinstance(payload["method"], str):
+        return False
+    if payload["method"] != "tools.call":
+        return False
+    if not isinstance(payload["params"], dict):
+        return False
+    if not isinstance(payload["params"].get("tool"), str):
+        return False
+    if not isinstance(payload["params"].get("arguments"), dict):
+        return False
+    return True
+
+
+def validate_response(payload: dict) -> bool:
+    """Validate response envelope shape and invariants."""
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("jsonrpc") != "2.0":
+        return False
+
+    has_result = "result" in payload
+    has_error = "error" in payload
+    if has_result == has_error:
+        return False
+
+    if "id" not in payload:
+        return False
+
+    if has_result:
+        result = payload["result"]
+        if not isinstance(result, dict):
+            return False
+        if result.get("ok") is not True:
+            return False
+        if not isinstance(result.get("data"), dict):
+            return False
+
+    if has_error:
+        error = payload["error"]
+        if not isinstance(error, dict):
+            return False
+        if error.get("code") not in ERROR_CODES:
+            return False
+        if not isinstance(error.get("message"), str):
+            return False
+        if "stack" in error or "trace" in error:
+            return False
+
+    return True
+
+
+def test_minimal_valid_request():
+    payload = {
+        "jsonrpc": "2.0",
+        "id": "1",
+        "method": "tools.call",
+        "params": {
+            "tool": "echo",
+            "arguments": {},
+        },
+    }
+    assert validate_request(payload)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "jsonrpc": "2.0",
+            "method": "tools.call",
+            "params": {"tool": "echo", "arguments": {}},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": "1",
+            "params": {"tool": "echo", "arguments": {}},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": "1",
+            "method": "tools.call",
+        },
+    ],
+    ids=["missing-id", "missing-method", "missing-params"],
+)
+def test_request_missing_required_field(payload):
+    assert not validate_request(payload)
+
+
+def test_response_result_and_error_are_exclusive():
+    base = {"jsonrpc": "2.0", "id": "1"}
+    invalid = {
+        **base,
+        "result": {"ok": True, "data": {}},
+        "error": {"code": "INTERNAL_ERROR", "message": "unexpected"},
+    }
+    success = {**base, "result": {"ok": True, "data": {}}}
+    failure = {
+        **base,
+        "error": {"code": "TOOL_NOT_FOUND", "message": "missing tool"},
+    }
+
+    assert not validate_response(invalid)
+    assert validate_response(success)
+    assert validate_response(failure)
