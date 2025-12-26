@@ -4,7 +4,7 @@ import json
 import sys
 from typing import Any, Callable, Dict, Optional
 
-from src.mcp_core.server import handle_request
+from .server import handle_request
 
 
 def _invalid_json_response() -> Dict[str, Any]:
