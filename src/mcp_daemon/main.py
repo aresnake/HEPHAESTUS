@@ -3,8 +3,9 @@
 import json
 import os
 import sys
+import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Optional
 from urllib import request
 
 
@@ -13,6 +14,70 @@ if SRC_DIR and str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 DEFAULT_URL = "http://127.0.0.1:8765/mcp"
+ToolExecutor = Optional[Callable[[str, Dict[str, Any]], Dict[str, Any]]]
+
+
+def _invalid_json_response() -> Dict[str, Any]:
+    return {
+        "jsonrpc": "2.0",
+        "id": None,
+        "error": {"code": "INVALID_REQUEST", "message": "invalid json"},
+    }
+
+
+def _initialize_response(payload: Dict[str, Any]) -> Dict[str, Any]:
+    params = payload.get("params") or {}
+    protocol_version = params.get("protocolVersion")
+    if not isinstance(protocol_version, str):
+        protocol_version = ""
+
+    return {
+        "jsonrpc": "2.0",
+        "id": payload.get("id"),
+        "result": {
+            "protocolVersion": protocol_version,
+            "capabilities": {"tools": {}},
+            "serverInfo": {"name": "hephaestus", "version": "0.1.0"},
+        },
+    }
+
+
+def _write_response(response: Dict[str, Any]) -> None:
+    try:
+        sys.stdout.write(json.dumps(response) + "\n")
+        sys.stdout.flush()
+    except Exception:  # noqa: BLE001
+        return
+
+
+def handle_stdio_payload(payload: Any, tool_executor: ToolExecutor = None) -> Dict[str, Any]:
+    from mcp_core.server import handle_request
+
+    if not isinstance(payload, dict):
+        return _invalid_json_response()
+
+    if payload.get("method") == "initialize":
+        return _initialize_response(payload)
+
+    return handle_request(payload, tool_executor=tool_executor)
+
+
+def run_stdio_with_initialize(tool_executor: ToolExecutor = None) -> None:
+    try:
+        for line in sys.stdin:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                payload = json.loads(line)
+            except Exception:  # noqa: BLE001
+                response = _invalid_json_response()
+            else:
+                response = handle_stdio_payload(payload, tool_executor=tool_executor)
+
+            _write_response(response)
+    except Exception:  # noqa: BLE001
+        return
 
 
 def execute_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -55,9 +120,14 @@ def execute_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
 
 def main() -> None:
     try:
-        from mcp_core.transport_stdio import run_stdio
-
-        run_stdio(tool_executor=execute_tool)
+        run_stdio_with_initialize(tool_executor=execute_tool)
+        while True:
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                break
+    except KeyboardInterrupt:
+        return
     except Exception as exc:  # noqa: BLE001
         try:
             sys.stderr.write(f"daemon error: {exc}\n")

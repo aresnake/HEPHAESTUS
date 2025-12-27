@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 sys.path.insert(0, os.fspath(SRC))
 
-from mcp_daemon.main import execute_tool
+from mcp_daemon.main import execute_tool, handle_stdio_payload
 
 
 def start_mock_server(response_payload):
@@ -64,3 +64,17 @@ def test_execute_tool_error(monkeypatch):
         assert "fail" in str(excinfo.value)
     finally:
         stop_mock_server(server)
+
+
+def test_initialize_handshake():
+    payload = {
+        "jsonrpc": "2.0",
+        "id": "init-1",
+        "method": "initialize",
+        "params": {"protocolVersion": "1.2.3"},
+    }
+
+    response = handle_stdio_payload(payload, tool_executor=execute_tool)
+
+    assert response["result"]["protocolVersion"] == "1.2.3"
+    assert response["result"]["serverInfo"]["name"] == "hephaestus"
