@@ -35,6 +35,8 @@ def run_stdio(
                 response = _invalid_json_response()
             else:
                 response = handle_request(payload, tool_executor=tool_executor, tool_lister=tool_lister)
+                if response is None:
+                    continue
 
             try:
                 sys.stdout.write(json.dumps(response) + "\n")
