@@ -1,7 +1,7 @@
 """Blender MCP HTTP provider entrypoint."""
 
 import sys
-import threading
+import time
 from pathlib import Path
 
 
@@ -15,17 +15,23 @@ def main() -> None:
         from blender_bridge.executor import execute_tool
         from blender_tools import list_tools
 
-        thread = threading.Thread(
-            target=run_http,
-            kwargs={
-                "host": "127.0.0.1",
-                "port": 8765,
-                "tool_executor": execute_tool,
-                "tool_lister": list_tools,
-            },
-            daemon=True,
+        server = run_http(
+            host="127.0.0.1",
+            port=8765,
+            tool_executor=execute_tool,
+            tool_lister=list_tools,
         )
-        thread.start()
+        if server is not None:
+            try:
+                sys.stdout.write("provider_http ready on 127.0.0.1:8765\n")
+                sys.stdout.flush()
+            except Exception:
+                pass
+        while True:
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                break
     except Exception as exc:  # noqa: BLE001
         try:
             sys.stderr.write(f"provider_http error: {exc}\n")
