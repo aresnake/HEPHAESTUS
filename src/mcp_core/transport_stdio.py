@@ -11,8 +11,8 @@ def _invalid_json_response() -> Dict[str, Any]:
     return {
         "jsonrpc": "2.0",
         "id": None,
-    "error": {"code": "INVALID_REQUEST", "message": "invalid json"},
-}
+        "error": {"code": -32700, "message": "parse error"},
+    }
 
 
 def run_stdio(

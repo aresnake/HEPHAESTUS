@@ -51,7 +51,8 @@ def test_post_valid_json_returns_valid_response():
         }
         response = request_json(server, body=request)
         assert "error" in response
-        assert response["error"]["code"] == "TOOL_NOT_FOUND"
+        assert response["jsonrpc"] == "2.0"
+        assert response["error"]["code"] == -32004
     finally:
         stop_server(server)
 
@@ -65,7 +66,8 @@ def test_post_invalid_json_returns_invalid_request():
         resp = conn.getresponse()
         payload = json.loads(resp.read().decode("utf-8"))
         conn.close()
-        assert payload["error"]["code"] == "INVALID_REQUEST"
+        assert payload["jsonrpc"] == "2.0"
+        assert payload["error"]["code"] == -32700
     finally:
         stop_server(server)
 
@@ -80,7 +82,7 @@ def test_post_tools_call_without_executor_returns_tool_not_found():
             "params": {"tool": "echo", "arguments": {}},
         }
         response = request_json(server, body=request)
-        assert response["error"]["code"] == "TOOL_NOT_FOUND"
+        assert response["error"]["code"] == -32004
         assert response["id"] == "req-2"
     finally:
         stop_server(server)
@@ -90,6 +92,7 @@ def test_get_route_returns_method_not_found():
     server = start_server()
     try:
         response = request_json(server, method="GET")
-        assert response["error"]["code"] == "METHOD_NOT_FOUND"
+        assert response["error"]["code"] == -32601
+        assert response["jsonrpc"] == "2.0"
     finally:
         stop_server(server)

@@ -20,7 +20,7 @@ def _invalid_json_response() -> Dict[str, Any]:
     return {
         "jsonrpc": "2.0",
         "id": None,
-        "error": {"code": "INVALID_REQUEST", "message": "invalid json"},
+        "error": {"code": -32700, "message": "parse error"},
     }
 
 
@@ -38,9 +38,6 @@ def handle_stdio_payload(
     tool_lister: Optional[Callable[[], list]] = None,
 ) -> Dict[str, Any]:
     from mcp_core.server import handle_request
-
-    if not isinstance(payload, dict):
-        return _invalid_json_response()
 
     return handle_request(payload, tool_executor=tool_executor, tool_lister=tool_lister)
 

@@ -12,15 +12,15 @@ def _invalid_json_response() -> Dict[str, Any]:
     return {
         "jsonrpc": "2.0",
         "id": None,
-    "error": {"code": "INVALID_REQUEST", "message": "invalid json"},
-}
+        "error": {"code": -32700, "message": "parse error"},
+    }
 
 
 def _method_not_found_response() -> Dict[str, Any]:
     return {
         "jsonrpc": "2.0",
         "id": None,
-        "error": {"code": "METHOD_NOT_FOUND", "message": "unsupported route or method"},
+        "error": {"code": -32601, "message": "unsupported route or method"},
     }
 
 

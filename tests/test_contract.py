@@ -2,12 +2,13 @@ import pytest
 
 
 ERROR_CODES = {
-    "INVALID_REQUEST",
-    "METHOD_NOT_FOUND",
-    "TOOL_NOT_FOUND",
-    "INVALID_ARGUMENT",
-    "EXECUTION_ERROR",
-    "INTERNAL_ERROR",
+    -32700,
+    -32600,
+    -32601,
+    -32602,
+    -32603,
+    -32004,
+    -32003,
 }
 
 
@@ -63,7 +64,9 @@ def validate_response(payload: dict) -> bool:
         error = payload["error"]
         if not isinstance(error, dict):
             return False
-        if error.get("code") not in ERROR_CODES:
+        if not isinstance(error.get("code"), int):
+            return False
+        if error["code"] not in ERROR_CODES:
             return False
         if not isinstance(error.get("message"), str):
             return False
@@ -116,12 +119,12 @@ def test_response_result_and_error_are_exclusive():
     invalid = {
         **base,
         "result": {"ok": True, "data": {}},
-        "error": {"code": "INTERNAL_ERROR", "message": "unexpected"},
+        "error": {"code": -32603, "message": "unexpected"},
     }
     success = {**base, "result": {"ok": True, "data": {}}}
     failure = {
         **base,
-        "error": {"code": "TOOL_NOT_FOUND", "message": "missing tool"},
+        "error": {"code": -32004, "message": "missing tool"},
     }
 
     assert not validate_response(invalid)

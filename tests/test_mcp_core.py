@@ -22,7 +22,7 @@ def test_valid_call_without_tool_executor_returns_tool_not_found():
 
     response = handle_request(request)
 
-    assert response["error"]["code"] == "TOOL_NOT_FOUND"
+    assert response["error"]["code"] == -32004
     assert response["id"] == "req-1"
     assert "result" not in response
 
@@ -37,15 +37,16 @@ def test_unknown_method_returns_method_not_found():
 
     response = handle_request(request)
 
-    assert response["error"]["code"] == "METHOD_NOT_FOUND"
+    assert response["error"]["code"] == -32601
     assert response["id"] == "req-2"
 
 
 def test_invalid_payload_returns_invalid_request():
     response = handle_request({})
 
-    assert response["error"]["code"] == "INVALID_REQUEST"
+    assert response["error"]["code"] == -32600
     assert response["id"] is None
+    assert response["jsonrpc"] == "2.0"
 
 
 def test_tool_executor_success_returns_result_ok_true():
@@ -82,7 +83,7 @@ def test_tool_executor_exception_returns_execution_error():
 
     response = handle_request(request, tool_executor=executor)
 
-    assert response["error"]["code"] == "EXECUTION_ERROR"
+    assert response["error"]["code"] == -32003
     assert response["id"] == "req-4"
 
 
@@ -134,3 +135,38 @@ def test_tools_list_includes_blender_tools():
     assert "blender.ping" in names
     assert "blender.add_cube" in names
     assert all("input_schema" in tool for tool in response["result"]["tools"])
+
+
+def test_method_alias_dot_notation():
+    request = {
+        "jsonrpc": "2.0",
+        "id": "req-8",
+        "method": "tools.call",
+        "params": {"tool": "echo", "arguments": {}},
+    }
+
+    response = handle_request(request)
+
+    assert response["error"]["code"] == -32004
+    assert response["id"] == "req-8"
+    assert response["jsonrpc"] == "2.0"
+
+
+def test_list_alias_dot_notation():
+    request = {"jsonrpc": "2.0", "id": "req-9", "method": "tools.list", "params": {}}
+
+    response = handle_request(request, tool_lister=list_tools)
+
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] == "req-9"
+    assert isinstance(response["result"]["tools"], list)
+
+
+def test_invalid_id_returns_null_id():
+    request = {"jsonrpc": "2.0", "id": 123, "method": "tools/list", "params": {}}
+
+    response = handle_request(request)
+
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] is None
+    assert response["error"]["code"] == -32600
