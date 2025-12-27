@@ -43,7 +43,7 @@ def test_desktop_handshake_sequence():
             "jsonrpc": "2.0",
             "id": 3,
             "method": "tools/call",
-            "params": {"tool": "blender.ping", "arguments": {}},
+            "params": {"name": "blender.ping", "arguments": {}},
         },
     ]
     input_data = "\n".join(json.dumps(m) for m in messages) + "\n"

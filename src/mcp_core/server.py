@@ -114,11 +114,11 @@ def handle_request(
         if method not in {"tools.call", "tools/call"}:
             return _error_response(METHOD_NOT_FOUND, "unsupported method", request_id)
 
-        tool_name = params.get("tool")
-        arguments = params.get("arguments")
+        tool_name = params.get("name") if "name" in params else params.get("tool")
+        arguments = params.get("arguments", {})
 
         if not isinstance(tool_name, str):
-            return _error_response(INVALID_PARAMS, "params.tool must be string", request_id)
+            return _error_response(INVALID_PARAMS, "params.name must be string", request_id)
         if not isinstance(arguments, dict):
             return _error_response(INVALID_PARAMS, "params.arguments must be object", request_id)
 
