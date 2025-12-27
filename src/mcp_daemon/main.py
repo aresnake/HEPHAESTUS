@@ -61,6 +61,8 @@ def run_stdio_with_initialize(
                     tool_lister=tool_lister,
                 )
 
+            if response is None:
+                continue
             _write_response(response)
     except Exception:  # noqa: BLE001
         return

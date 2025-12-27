@@ -70,6 +70,9 @@ def handle_request(
         if not isinstance(payload, dict):
             return _error_response(INVALID_REQUEST, "payload must be object", None)
 
+        if "method" in payload and "id" not in payload:
+            return None
+
         if payload.get("jsonrpc") != "2.0":
             return _error_response(INVALID_REQUEST, "jsonrpc must be '2.0'", None)
 
