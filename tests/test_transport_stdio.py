@@ -37,8 +37,9 @@ def test_valid_json_line_produces_valid_json_response():
 
     assert len(output_lines) == 1
     response = json.loads(output_lines[0])
+    assert response["jsonrpc"] == "2.0"
     assert "error" in response
-    assert response["error"]["code"] == "TOOL_NOT_FOUND"
+    assert response["error"]["code"] == -32004
 
 
 def test_invalid_json_line_returns_invalid_request_error():
@@ -46,7 +47,8 @@ def test_invalid_json_line_returns_invalid_request_error():
 
     assert len(output_lines) == 1
     response = json.loads(output_lines[0])
-    assert response["error"]["code"] == "INVALID_REQUEST"
+    assert response["jsonrpc"] == "2.0"
+    assert response["error"]["code"] == -32700
     assert response["id"] is None
 
 
@@ -60,5 +62,27 @@ def test_tools_call_without_executor_returns_tool_not_found():
     output_lines = run_with_io(json.dumps(request) + "\n")
 
     response = json.loads(output_lines[0])
-    assert response["error"]["code"] == "TOOL_NOT_FOUND"
+    assert response["jsonrpc"] == "2.0"
+    assert response["error"]["code"] == -32004
     assert response["id"] == "req-2"
+
+
+def test_stdout_contains_only_responses():
+    request = {
+        "jsonrpc": "2.0",
+        "id": "req-3",
+        "method": "tools/call",
+        "params": {"tool": "echo", "arguments": {}},
+    }
+    lines = run_with_io(json.dumps(request) + "\n")
+    assert len(lines) == 1
+    assert lines[0].strip().startswith("{") and lines[0].strip().endswith("}")
+
+
+def test_valid_json_invalid_request_returns_invalid_request_code():
+    output_lines = run_with_io('{"jsonrpc":"2.0"}\n')
+
+    response = json.loads(output_lines[0])
+    assert response["jsonrpc"] == "2.0"
+    assert response["error"]["code"] == -32600
+    assert response["id"] is None
