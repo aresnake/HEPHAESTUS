@@ -1,7 +1,6 @@
 """Blender MCP provider entrypoint executed via blender --python."""
 
 import sys
-import threading
 from pathlib import Path
 
 
@@ -13,13 +12,11 @@ def main() -> None:
 
         from mcp_core.transport_stdio import run_stdio
         from blender_bridge.executor import execute_tool
+        from blender_tools import list_tools
 
-        thread = threading.Thread(
-            target=run_stdio,
-            kwargs={"tool_executor": execute_tool},
-            daemon=True,
-        )
-        thread.start()
+        run_stdio(tool_executor=execute_tool, tool_lister=list_tools)
+    except KeyboardInterrupt:
+        return
     except Exception as exc:  # noqa: BLE001
         try:
             sys.stderr.write(f"provider error: {exc}\n")

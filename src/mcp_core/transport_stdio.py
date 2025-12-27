@@ -11,11 +11,14 @@ def _invalid_json_response() -> Dict[str, Any]:
     return {
         "jsonrpc": "2.0",
         "id": None,
-        "error": {"code": "INVALID_REQUEST", "message": "invalid json"},
-    }
+    "error": {"code": "INVALID_REQUEST", "message": "invalid json"},
+}
 
 
-def run_stdio(tool_executor: Optional[Callable[[str, Dict[str, Any]], Dict[str, Any]]] = None) -> None:
+def run_stdio(
+    tool_executor: Optional[Callable[[str, Dict[str, Any]], Dict[str, Any]]] = None,
+    tool_lister: Optional[Callable[[], list]] = None,
+) -> None:
     """
     Process newline-delimited JSON requests from stdin and write responses to stdout.
 
@@ -31,7 +34,7 @@ def run_stdio(tool_executor: Optional[Callable[[str, Dict[str, Any]], Dict[str, 
             except Exception:  # noqa: BLE001
                 response = _invalid_json_response()
             else:
-                response = handle_request(payload, tool_executor=tool_executor)
+                response = handle_request(payload, tool_executor=tool_executor, tool_lister=tool_lister)
 
             try:
                 sys.stdout.write(json.dumps(response) + "\n")

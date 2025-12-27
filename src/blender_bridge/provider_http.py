@@ -13,10 +13,16 @@ def main() -> None:
 
         from mcp_core.transport_http import run_http
         from blender_bridge.executor import execute_tool
+        from blender_tools import list_tools
 
         thread = threading.Thread(
             target=run_http,
-            kwargs={"host": "127.0.0.1", "port": 8765, "tool_executor": execute_tool},
+            kwargs={
+                "host": "127.0.0.1",
+                "port": 8765,
+                "tool_executor": execute_tool,
+                "tool_lister": list_tools,
+            },
             daemon=True,
         )
         thread.start()

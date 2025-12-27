@@ -46,7 +46,7 @@ def test_post_valid_json_returns_valid_response():
         request = {
             "jsonrpc": "2.0",
             "id": "req-1",
-            "method": "tools.call",
+            "method": "tools/call",
             "params": {"tool": "echo", "arguments": {}},
         }
         response = request_json(server, body=request)
@@ -76,7 +76,7 @@ def test_post_tools_call_without_executor_returns_tool_not_found():
         request = {
             "jsonrpc": "2.0",
             "id": "req-2",
-            "method": "tools.call",
+            "method": "tools/call",
             "params": {"tool": "echo", "arguments": {}},
         }
         response = request_json(server, body=request)

@@ -30,7 +30,7 @@ def test_valid_json_line_produces_valid_json_response():
     request = {
         "jsonrpc": "2.0",
         "id": "req-1",
-        "method": "tools.call",
+        "method": "tools/call",
         "params": {"tool": "echo", "arguments": {}},
     }
     output_lines = run_with_io(json.dumps(request) + "\n")
@@ -54,7 +54,7 @@ def test_tools_call_without_executor_returns_tool_not_found():
     request = {
         "jsonrpc": "2.0",
         "id": "req-2",
-        "method": "tools.call",
+        "method": "tools/call",
         "params": {"tool": "echo", "arguments": {}},
     }
     output_lines = run_with_io(json.dumps(request) + "\n")

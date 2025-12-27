@@ -3,7 +3,6 @@
 import json
 import os
 import sys
-import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 from urllib import request
@@ -25,23 +24,6 @@ def _invalid_json_response() -> Dict[str, Any]:
     }
 
 
-def _initialize_response(payload: Dict[str, Any]) -> Dict[str, Any]:
-    params = payload.get("params") or {}
-    protocol_version = params.get("protocolVersion")
-    if not isinstance(protocol_version, str):
-        protocol_version = ""
-
-    return {
-        "jsonrpc": "2.0",
-        "id": payload.get("id"),
-        "result": {
-            "protocolVersion": protocol_version,
-            "capabilities": {"tools": {}},
-            "serverInfo": {"name": "hephaestus", "version": "0.1.0"},
-        },
-    }
-
-
 def _write_response(response: Dict[str, Any]) -> None:
     try:
         sys.stdout.write(json.dumps(response) + "\n")
@@ -50,19 +32,22 @@ def _write_response(response: Dict[str, Any]) -> None:
         return
 
 
-def handle_stdio_payload(payload: Any, tool_executor: ToolExecutor = None) -> Dict[str, Any]:
+def handle_stdio_payload(
+    payload: Any,
+    tool_executor: ToolExecutor = None,
+    tool_lister: Optional[Callable[[], list]] = None,
+) -> Dict[str, Any]:
     from mcp_core.server import handle_request
 
     if not isinstance(payload, dict):
         return _invalid_json_response()
 
-    if payload.get("method") == "initialize":
-        return _initialize_response(payload)
-
-    return handle_request(payload, tool_executor=tool_executor)
+    return handle_request(payload, tool_executor=tool_executor, tool_lister=tool_lister)
 
 
-def run_stdio_with_initialize(tool_executor: ToolExecutor = None) -> None:
+def run_stdio_with_initialize(
+    tool_executor: ToolExecutor = None, tool_lister: Optional[Callable[[], list]] = None
+) -> None:
     try:
         for line in sys.stdin:
             line = line.strip()
@@ -73,7 +58,11 @@ def run_stdio_with_initialize(tool_executor: ToolExecutor = None) -> None:
             except Exception:  # noqa: BLE001
                 response = _invalid_json_response()
             else:
-                response = handle_stdio_payload(payload, tool_executor=tool_executor)
+                response = handle_stdio_payload(
+                    payload,
+                    tool_executor=tool_executor,
+                    tool_lister=tool_lister,
+                )
 
             _write_response(response)
     except Exception:  # noqa: BLE001
@@ -81,12 +70,12 @@ def run_stdio_with_initialize(tool_executor: ToolExecutor = None) -> None:
 
 
 def execute_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-    """Proxy tools.call to Blender HTTP provider."""
+    """Proxy tools/call to Blender HTTP provider."""
     url = os.getenv("BLENDER_MCP_HTTP_URL", DEFAULT_URL)
     payload = {
         "jsonrpc": "2.0",
         "id": "1",
-        "method": "tools.call",
+        "method": "tools/call",
         "params": {"tool": tool_name, "arguments": arguments or {}},
     }
 
@@ -120,12 +109,9 @@ def execute_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
 
 def main() -> None:
     try:
-        run_stdio_with_initialize(tool_executor=execute_tool)
-        while True:
-            try:
-                time.sleep(1)
-            except KeyboardInterrupt:
-                break
+        from blender_tools import list_tools
+
+        run_stdio_with_initialize(tool_executor=execute_tool, tool_lister=list_tools)
     except KeyboardInterrupt:
         return
     except Exception as exc:  # noqa: BLE001

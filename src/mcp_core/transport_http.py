@@ -12,8 +12,8 @@ def _invalid_json_response() -> Dict[str, Any]:
     return {
         "jsonrpc": "2.0",
         "id": None,
-        "error": {"code": "INVALID_REQUEST", "message": "invalid json"},
-    }
+    "error": {"code": "INVALID_REQUEST", "message": "invalid json"},
+}
 
 
 def _method_not_found_response() -> Dict[str, Any]:
@@ -24,7 +24,10 @@ def _method_not_found_response() -> Dict[str, Any]:
     }
 
 
-def _build_handler(tool_executor: Optional[Callable[[str, Dict[str, Any]], Dict[str, Any]]]):
+def _build_handler(
+    tool_executor: Optional[Callable[[str, Dict[str, Any]], Dict[str, Any]]] = None,
+    tool_lister: Optional[Callable[[], list]] = None,
+):
     class MCPRequestHandler(BaseHTTPRequestHandler):
         def do_POST(self) -> None:  # noqa: N802
             try:
@@ -38,7 +41,11 @@ def _build_handler(tool_executor: Optional[Callable[[str, Dict[str, Any]], Dict[
                     except Exception:  # noqa: BLE001
                         response = _invalid_json_response()
                     else:
-                        response = handle_request(payload, tool_executor=tool_executor)
+                        response = handle_request(
+                            payload,
+                            tool_executor=tool_executor,
+                            tool_lister=tool_lister,
+                        )
                 self._write_json(response)
             except Exception:  # noqa: BLE001
                 self._write_json(_invalid_json_response())
@@ -76,6 +83,7 @@ def run_http(
     host: str = "127.0.0.1",
     port: int = 8765,
     tool_executor: Optional[Callable[[str, Dict[str, Any]], Dict[str, Any]]] = None,
+    tool_lister: Optional[Callable[[], list]] = None,
 ):
     """
     Start an HTTP server that processes MCP requests on POST /mcp.
@@ -83,7 +91,7 @@ def run_http(
     Returns the server instance so callers can manage its lifecycle.
     """
     try:
-        handler = _build_handler(tool_executor)
+        handler = _build_handler(tool_executor=tool_executor, tool_lister=tool_lister)
         httpd = HTTPServer((host, port), handler)
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()
