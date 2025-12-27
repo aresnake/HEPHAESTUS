@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, Optional
 ErrorResponse = Dict[str, Any]
 SuccessResponse = Dict[str, Any]
 ToolExecutor = Optional[Callable[[str, Dict[str, Any]], Dict[str, Any]]]
+ToolLister = Optional[Callable[[], list]]
 
 ERROR_CODES = {
     "INVALID_REQUEST",
@@ -33,7 +34,15 @@ def _success_response(request_id: str, data: Dict[str, Any]) -> SuccessResponse:
     }
 
 
-def handle_request(payload: dict, tool_executor: ToolExecutor = None) -> dict:
+def _list_tools_response(request_id: str, tools: list) -> SuccessResponse:
+    return {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "result": {"tools": tools},
+    }
+
+
+def handle_request(payload: dict, tool_executor: ToolExecutor = None, tool_lister: ToolLister = None) -> dict:
     """
     Handle a single MCP request payload according to MCP Contract v1.
 
@@ -60,6 +69,17 @@ def handle_request(payload: dict, tool_executor: ToolExecutor = None) -> dict:
             return _error_response("INVALID_REQUEST", "method must be string", request_id)
         if not isinstance(params, dict):
             return _error_response("INVALID_REQUEST", "params must be object", request_id)
+
+        if method == "tools.list":
+            try:
+                tools = [] if tool_lister is None else tool_lister()
+            except Exception as exc:  # noqa: BLE001
+                return _error_response("EXECUTION_ERROR", str(exc) or "execution error", request_id)
+
+            if not isinstance(tools, list):
+                return _error_response("EXECUTION_ERROR", "tool lister returned non-list", request_id)
+
+            return _list_tools_response(request_id, tools)
 
         if method != "tools.call":
             return _error_response("METHOD_NOT_FOUND", "unsupported method", request_id)
