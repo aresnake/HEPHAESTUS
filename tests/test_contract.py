@@ -24,7 +24,7 @@ def validate_request(payload: dict) -> bool:
         return False
     if not isinstance(payload["method"], str):
         return False
-    if payload["method"] != "tools.call":
+    if payload["method"] not in {"tools/call", "tools.call"}:
         return False
     if not isinstance(payload["params"], dict):
         return False
@@ -77,7 +77,7 @@ def test_minimal_valid_request():
     payload = {
         "jsonrpc": "2.0",
         "id": "1",
-        "method": "tools.call",
+        "method": "tools/call",
         "params": {
             "tool": "echo",
             "arguments": {},
@@ -102,7 +102,7 @@ def test_minimal_valid_request():
         {
             "jsonrpc": "2.0",
             "id": "1",
-            "method": "tools.call",
+            "method": "tools/call",
         },
     ],
     ids=["missing-id", "missing-method", "missing-params"],

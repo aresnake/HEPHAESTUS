@@ -8,6 +8,8 @@ SuccessResponse = Dict[str, Any]
 ToolExecutor = Optional[Callable[[str, Dict[str, Any]], Dict[str, Any]]]
 ToolLister = Optional[Callable[[], list]]
 
+SERVER_INFO = {"name": "hephaestus", "version": "0.1.0"}
+
 ERROR_CODES = {
     "INVALID_REQUEST",
     "METHOD_NOT_FOUND",
@@ -42,7 +44,23 @@ def _list_tools_response(request_id: str, tools: list) -> SuccessResponse:
     }
 
 
-def handle_request(payload: dict, tool_executor: ToolExecutor = None, tool_lister: ToolLister = None) -> dict:
+def _initialize_response(request_id: str, protocol_version: str) -> SuccessResponse:
+    return {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "result": {
+            "protocolVersion": protocol_version,
+            "capabilities": {"tools": {}},
+            "serverInfo": SERVER_INFO,
+        },
+    }
+
+
+def handle_request(
+    payload: dict,
+    tool_executor: ToolExecutor = None,
+    tool_lister: ToolLister = None,
+) -> dict:
     """
     Handle a single MCP request payload according to MCP Contract v1.
 
@@ -70,7 +88,17 @@ def handle_request(payload: dict, tool_executor: ToolExecutor = None, tool_liste
         if not isinstance(params, dict):
             return _error_response("INVALID_REQUEST", "params must be object", request_id)
 
-        if method == "tools.list":
+        if method in {"initialize"}:
+            if not isinstance(params, dict):
+                return _error_response("INVALID_REQUEST", "params must be object", request_id)
+            protocol_version = params.get("protocolVersion")
+            if not isinstance(protocol_version, str):
+                protocol_version = ""
+            return _initialize_response(request_id, protocol_version)
+
+        if method in {"tools.list", "tools/list"}:
+            if not isinstance(params, dict):
+                return _error_response("INVALID_REQUEST", "params must be object", request_id)
             try:
                 tools = [] if tool_lister is None else tool_lister()
             except Exception as exc:  # noqa: BLE001
@@ -81,7 +109,7 @@ def handle_request(payload: dict, tool_executor: ToolExecutor = None, tool_liste
 
             return _list_tools_response(request_id, tools)
 
-        if method != "tools.call":
+        if method not in {"tools.call", "tools/call"}:
             return _error_response("METHOD_NOT_FOUND", "unsupported method", request_id)
 
         tool_name = params.get("tool")
