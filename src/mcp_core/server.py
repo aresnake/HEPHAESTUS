@@ -19,7 +19,7 @@ TOOL_NOT_FOUND = -32004
 EXECUTION_ERROR = -32003
 
 
-def _error_response(code: int, message: str, request_id: Optional[str]) -> ErrorResponse:
+def _error_response(code: int, message: str, request_id: Any) -> ErrorResponse:
     return {
         "jsonrpc": "2.0",
         "id": request_id,
@@ -27,7 +27,7 @@ def _error_response(code: int, message: str, request_id: Optional[str]) -> Error
     }
 
 
-def _success_response(request_id: str, data: Dict[str, Any]) -> SuccessResponse:
+def _success_response(request_id: Any, data: Dict[str, Any]) -> SuccessResponse:
     return {
         "jsonrpc": "2.0",
         "id": request_id,
@@ -35,7 +35,7 @@ def _success_response(request_id: str, data: Dict[str, Any]) -> SuccessResponse:
     }
 
 
-def _list_tools_response(request_id: str, tools: list) -> SuccessResponse:
+def _list_tools_response(request_id: Any, tools: list) -> SuccessResponse:
     return {
         "jsonrpc": "2.0",
         "id": request_id,
@@ -43,7 +43,7 @@ def _list_tools_response(request_id: str, tools: list) -> SuccessResponse:
     }
 
 
-def _initialize_response(request_id: str, protocol_version: str) -> SuccessResponse:
+def _initialize_response(request_id: Any, protocol_version: str) -> SuccessResponse:
     return {
         "jsonrpc": "2.0",
         "id": request_id,
@@ -65,7 +65,7 @@ def handle_request(
 
     All validation and execution errors are converted to MCP error responses.
     """
-    request_id: Optional[str] = None
+    request_id: Any = None
     try:
         if not isinstance(payload, dict):
             return _error_response(INVALID_REQUEST, "payload must be object", None)
@@ -74,11 +74,14 @@ def handle_request(
             return _error_response(INVALID_REQUEST, "jsonrpc must be '2.0'", None)
 
         raw_id = payload.get("id")
-        request_id = raw_id if isinstance(raw_id, str) else None
-        if "id" not in payload or "method" not in payload or "params" not in payload:
+        if isinstance(raw_id, (str, int, float)) or raw_id is None:
+            request_id = raw_id
+        else:
+            request_id = None
+            return _error_response(INVALID_REQUEST, "id must be string, number, or null", request_id)
+
+        if "method" not in payload or "params" not in payload:
             return _error_response(INVALID_REQUEST, "missing required fields", request_id)
-        if not isinstance(raw_id, str):
-            return _error_response(INVALID_REQUEST, "id must be string", None)
 
         method = payload.get("method")
         params = payload.get("params")
