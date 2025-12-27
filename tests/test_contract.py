@@ -16,12 +16,14 @@ def validate_request(payload: dict) -> bool:
     """Validate request envelope shape against MCP Contract v1."""
     if not isinstance(payload, dict):
         return False
-    required_keys = {"jsonrpc", "id", "method", "params"}
+    required_keys = {"jsonrpc", "method", "params"}
     if payload.get("jsonrpc") != "2.0":
         return False
     if not required_keys.issubset(payload):
         return False
-    if not isinstance(payload["id"], str):
+    if "id" in payload and not (
+        isinstance(payload["id"], (str, int, float)) or payload["id"] is None
+    ):
         return False
     if not isinstance(payload["method"], str):
         return False
@@ -89,14 +91,19 @@ def test_minimal_valid_request():
     assert validate_request(payload)
 
 
+def test_request_allows_numeric_id():
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {"tool": "echo", "arguments": {}},
+    }
+    assert validate_request(payload)
+
+
 @pytest.mark.parametrize(
     "payload",
     [
-        {
-            "jsonrpc": "2.0",
-            "method": "tools.call",
-            "params": {"tool": "echo", "arguments": {}},
-        },
         {
             "jsonrpc": "2.0",
             "id": "1",
@@ -108,9 +115,23 @@ def test_minimal_valid_request():
             "method": "tools/call",
         },
     ],
-    ids=["missing-id", "missing-method", "missing-params"],
+    ids=["missing-method", "missing-params"],
 )
 def test_request_missing_required_field(payload):
+    assert not validate_request(payload)
+
+
+@pytest.mark.parametrize(
+    "invalid_id",
+    [{}, [], ["a"]],
+)
+def test_request_invalid_id_types(invalid_id):
+    payload = {
+        "jsonrpc": "2.0",
+        "id": invalid_id,
+        "method": "tools/call",
+        "params": {"tool": "echo", "arguments": {}},
+    }
     assert not validate_request(payload)
 
 

@@ -162,8 +162,43 @@ def test_list_alias_dot_notation():
     assert isinstance(response["result"]["tools"], list)
 
 
-def test_invalid_id_returns_null_id():
-    request = {"jsonrpc": "2.0", "id": 123, "method": "tools/list", "params": {}}
+def test_initialize_with_numeric_id():
+    request = {
+        "jsonrpc": "2.0",
+        "id": 42,
+        "method": "initialize",
+        "params": {"protocolVersion": "2.0"},
+    }
+
+    response = handle_request(request)
+
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] == 42
+    assert response["result"]["protocolVersion"] == "2.0"
+
+
+def test_tools_list_with_numeric_id():
+    request = {"jsonrpc": "2.0", "id": 99, "method": "tools/list", "params": {}}
+
+    response = handle_request(request, tool_lister=list_tools)
+
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] == 99
+    assert isinstance(response["result"]["tools"], list)
+
+
+def test_invalid_id_object_returns_invalid_request():
+    request = {"jsonrpc": "2.0", "id": {"bad": True}, "method": "tools/list", "params": {}}
+
+    response = handle_request(request)
+
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] is None
+    assert response["error"]["code"] == -32600
+
+
+def test_invalid_id_array_returns_invalid_request():
+    request = {"jsonrpc": "2.0", "id": [1, 2], "method": "tools/list", "params": {}}
 
     response = handle_request(request)
 
